@@ -4,6 +4,12 @@ module RailsLti2Provider
   class Engine < ::Rails::Engine
     isolate_namespace RailsLti2Provider
 
+    config.generators do |g|
+      g.test_framework      :rspec,        :fixture => false
+      g.assets false
+      g.helper false
+    end
+
     initializer 'resource_handlers' do |app|
       controllers = {}
       Dir[Rails.root.join('config', 'resource_handlers', '*.yml')].each do |yml|
