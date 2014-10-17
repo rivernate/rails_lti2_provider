@@ -89,7 +89,8 @@ module RailsLti2Provider
         {
           message_type: m['type'],
           path: Rails.application.routes.url_for(host: host, controller: m['route']['controller'], action: m['route']['action']),
-          parameter: parameters(m['parameters'])
+          parameter: parameters(m['parameters']),
+          enabled_capability: capabilities(m)
         }
       end
     end
@@ -99,6 +100,16 @@ module RailsLti2Provider
         #TODO: check if variable parameters are in the capabilities offered
         IMS::LTI::Models::Parameter.new(p.symbolize_keys)
       end
+    end
+
+    def capabilities(message)
+      req_capabilities = message['required_capabilities'] || []
+      opt_capabilities = message['optional_capabilities'] || []
+      raise UnsupportedCapabilitiesError unless (req_capabilities - (tool_consumer_profile.capability_offered || [])).size == 0
+      req_capabilities + opt_capabilities
+    end
+
+    class UnsupportedCapabilitiesError < StandardError
     end
 
   end

@@ -13,18 +13,11 @@ messages:
       path: sample
       controller: sample
       action: launch
-
-parameters:
-  - name: course_id
-    variable: Course.id
-  - name: first_name
-    variable: Person.name
-    required: true
-  - name: xyzzy
-    fixed: yzzyx
-
-required_capabilities:
-  - Result.autocreate
-
-optional_capabilites:
-  - Result.lineitem
+    parameters:
+      - name: course_id
+        variable: Course.id
+      - name: first_name
+        variable: Person.name
+        required: true
+      - name: xyzzy
+        fixed: yzzyx
