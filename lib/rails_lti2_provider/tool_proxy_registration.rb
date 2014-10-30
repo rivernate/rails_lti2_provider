@@ -3,7 +3,7 @@ module RailsLti2Provider
 
     attr_reader :tool_consumer_profile, :registration_state, :return_url
 
-    attr_writer :shared_secret, :tool_proxy, :tool_profile, :security_contract, :product_instance
+    attr_writer :shared_secret, :tool_proxy, :tool_profile, :security_contract, :product_instance, :resource_handlers
 
     def initialize(registration_request, controller)
       @controller = controller
@@ -47,32 +47,34 @@ module RailsLti2Provider
       @security_contract ||= IMS::LTI::Models::SecurityContract.new(shared_secret: shared_secret)
     end
 
-    def register
-      raise 'ToolProxyAlreadyRegisteredException' if registration_state == :registered
-      if registered_proxy = @registration_service.register_tool_proxy(tool_proxy)
+    def self.register(registration, controller)
+      registration_request = registration.registration_request
+      raise 'ToolProxyAlreadyRegisteredException' if registration.workflow_state == :registered
+      registration_service = IMS::LTI::Services::ToolProxyRegistrationService.new(registration_request)
+      tool_proxy = registration.tool_proxy
+      if registered_proxy = registration_service.register_tool_proxy(tool_proxy)
         tool_proxy.tool_proxy_guid = registered_proxy.tool_proxy_guid
-        tool_proxy.id = @controller.show_tool_proxy_url(registered_proxy.tool_proxy_guid)
-        ToolProxy.create!(shared_secret: shared_secret, uuid:registered_proxy.tool_proxy_guid, proxy_json:tool_proxy.as_json)
-        @registration_state = :registered
+        tool_proxy.id = controller.send(engine_name).show_tool_proxy_url(registered_proxy.tool_proxy_guid)
+        ToolProxy.create!(shared_secret: registration_request.reg_password, uuid: registered_proxy.tool_proxy_guid, proxy_json: tool_proxy.as_json)
+        return_url = registration.registration_request.launch_presentation_return_url
+        registration.update(workflow_state: 'registered')
         {
           tool_proxy_uuid: tool_proxy.tool_proxy_guid,
-          return_url: @return_url,
+          return_url: return_url,
           status: 'success'
         }
       else
         {
           tool_proxy_uuid: tool_proxy.tool_proxy_guid,
-          return_url: @return_url,
+          return_url: return_url,
           status: 'error',
           message: "Failed to create a tool proxy in #{tool_consumer_profile.product_instance.product_info.product_name.default_value}"
         }
       end
     end
 
-    private
-
     def resource_handlers
-      RailsLti2Provider::RESOURCE_HANDLERS.map do |handler|
+      @resource_handlers ||= RailsLti2Provider::RESOURCE_HANDLERS.map do |handler|
         IMS::LTI::Models::ResourceHandler.from_json(
           {
             resource_type: {code: handler['code']},
@@ -82,6 +84,8 @@ module RailsLti2Provider
         )
       end
     end
+
+    private
 
     def messages(messages)
       messages.map do |m|
@@ -107,6 +111,13 @@ module RailsLti2Provider
       opt_capabilities = message['optional_capabilities'] || []
       raise UnsupportedCapabilitiesError unless (req_capabilities - (tool_consumer_profile.capability_offered || [])).size == 0
       req_capabilities + opt_capabilities
+    end
+
+    def self.engine_name
+      engine = Rails.application.routes.named_routes.routes.values.find do |r|
+        r.app.class.name == 'Class' && r.app.name == "RailsLti2Provider::Engine"
+      end
+      engine.name
     end
 
     class UnsupportedCapabilitiesError < StandardError
