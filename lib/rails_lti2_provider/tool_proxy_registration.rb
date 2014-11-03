@@ -55,9 +55,9 @@ module RailsLti2Provider
       if registered_proxy = registration_service.register_tool_proxy(tool_proxy)
         tool_proxy.tool_proxy_guid = registered_proxy.tool_proxy_guid
         tool_proxy.id = controller.send(engine_name).show_tool_proxy_url(registered_proxy.tool_proxy_guid)
-        ToolProxy.create!(shared_secret: registration_request.reg_password, uuid: registered_proxy.tool_proxy_guid, proxy_json: tool_proxy.as_json)
+        tp = ToolProxy.create!(shared_secret: tool_proxy.security_contract.shared_secret, uuid: registered_proxy.tool_proxy_guid, proxy_json: tool_proxy.as_json)
         return_url = registration.registration_request.launch_presentation_return_url
-        registration.update(workflow_state: 'registered')
+        registration.update(workflow_state: 'registered', tool_proxy: tp)
         {
           tool_proxy_uuid: tool_proxy.tool_proxy_guid,
           return_url: return_url,

@@ -12,7 +12,6 @@ module RailsLti2Provider
       raise Unauthorized unless valid_launch
       tool_proxy.lti_launches.where('created_at > ?', 1.day.ago).delete_all
       tool_proxy.lti_launches.create(nonce: lti_message.oauth_nonce, message: lti_message.post_params)
-      lti_message
     end
 
     class Unauthorized < StandardError;
