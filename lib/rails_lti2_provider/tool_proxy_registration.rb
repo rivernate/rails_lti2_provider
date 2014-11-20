@@ -68,7 +68,7 @@ module RailsLti2Provider
           tool_proxy_uuid: tool_proxy.tool_proxy_guid,
           return_url: return_url,
           status: 'error',
-          message: "Failed to create a tool proxy in #{tool_consumer_profile.product_instance.product_info.product_name.default_value}"
+          message: "Failed to create a tool proxy"
         }
       end
     end
