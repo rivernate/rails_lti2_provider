@@ -31,8 +31,13 @@ module RailsLti2Provider
       @tool_profile ||= IMS::LTI::Models::ToolProfile.new(
         lti_version: 'LTI-2p0',
         product_instance: product_instance,
-        resource_handler: resource_handlers
+        resource_handler: resource_handlers,
+        base_url_choice: base_url_choice
       )
+    end
+
+    def base_url_choice
+      [IMS::LTI::Models::BaseUrlChoice.new(default_base_url: @controller.request.base_url)]
     end
 
     def product_instance
@@ -52,11 +57,12 @@ module RailsLti2Provider
       raise 'ToolProxyAlreadyRegisteredException' if registration.workflow_state == :registered
       registration_service = IMS::LTI::Services::ToolProxyRegistrationService.new(registration_request)
       tool_proxy = registration.tool_proxy
-      if registered_proxy = registration_service.register_tool_proxy(tool_proxy)
+      return_url = registration.registration_request.launch_presentation_return_url
+      registered_proxy = registration_service.register_tool_proxy(tool_proxy)
+      if registered_proxy
         tool_proxy.tool_proxy_guid = registered_proxy.tool_proxy_guid
         tool_proxy.id = controller.send(engine_name).show_tool_proxy_url(registered_proxy.tool_proxy_guid)
         tp = ToolProxy.create!(shared_secret: tool_proxy.security_contract.shared_secret, uuid: registered_proxy.tool_proxy_guid, proxy_json: tool_proxy.as_json)
-        return_url = registration.registration_request.launch_presentation_return_url
         registration.update(workflow_state: 'registered', tool_proxy: tp)
         {
           tool_proxy_uuid: tool_proxy.tool_proxy_guid,
@@ -89,10 +95,9 @@ module RailsLti2Provider
 
     def messages(messages)
       messages.map do |m|
-        host = @controller.request.port == 80 || @controller.request.port == 443 ? @controller.request.host : "#{@controller.request.host}:#{@controller.request.port}"
         {
           message_type: m['type'],
-          path: Rails.application.routes.url_for(host: host, controller: m['route']['controller'], action: m['route']['action']),
+          path: Rails.application.routes.url_for(only_path: true, host: @controller.request.host_with_port, controller: m['route']['controller'], action: m['route']['action']),
           parameter: parameters(m['parameters']),
           enabled_capability: capabilities(m)
         }
