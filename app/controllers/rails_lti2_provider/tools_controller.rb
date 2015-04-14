@@ -1,5 +1,5 @@
 module RailsLti2Provider
-  class ToolProxyController < ApplicationController
+  class ToolsController < ApplicationController
     include RailsLti2Provider::ControllerHelpers
 
     before_filter :registration_request, only: :register

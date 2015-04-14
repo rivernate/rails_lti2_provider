@@ -1,11 +1,12 @@
 module RailsLti2Provider
   module ControllerHelpers
 
-    def lti2_authentication
-      lti_message = IMS::LTI::Models::Messages::BasicLTILaunchRequest.new(params)
+    def lti_authentication
+      lti_message = IMS::LTI::Models::Messages::BasicLTILaunchRequest.new(request.request_parameters.merge(request.query_parameters))
       lti_message.launch_url = request.url
       @lti_launch = RailsLti2Provider::LtiLaunch.check_launch(lti_message)
     end
+
 
     def disable_xframe_header
       response.headers.except! 'X-Frame-Options'

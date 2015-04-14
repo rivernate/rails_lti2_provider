@@ -1,4 +1,4 @@
 module RailsLti2Provider
-  module ToolProxyHelper
+  module ToolsHelper
   end
 end

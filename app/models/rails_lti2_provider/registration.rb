@@ -3,7 +3,7 @@ module RailsLti2Provider
 
     serialize :tool_proxy_json, JSON
     serialize :registration_request_params, JSON
-    belongs_to :tool_proxy
+    belongs_to :tool
 
     def register
 
