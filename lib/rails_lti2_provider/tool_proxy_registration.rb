@@ -14,17 +14,25 @@ module RailsLti2Provider
     end
 
     def shared_secret
-      @shared_secret ||= SecureRandom.hex(64)
+      @shared_secret ||= SecureRandom.hex(128)
     end
 
     def tool_proxy
-      @tool_proxy ||= IMS::LTI::Models::ToolProxy.new(
-        id: 'defined_by_tool_consumer',
-        lti_version: 'LTI-2p0',
-        security_contract: security_contract,
-        tool_consumer_profile: tool_consumer_profile.id,
-        tool_profile: tool_profile,
-      )
+      unless @tool_proxy
+        @tool_proxy ||= IMS::LTI::Models::ToolProxy.new(
+          id: 'defined_by_tool_consumer',
+          lti_version: 'LTI-2p0',
+          security_contract: security_contract,
+          tool_consumer_profile: tool_consumer_profile.id,
+          tool_profile: tool_profile,
+        )
+        if @tool_consumer_profile.capabilities_offered.include?('OAuth.splitSecret')
+          @tool_proxy.enabled_capability ||= []
+          @tool_proxy.enabled_capability << 'OAuth.splitSecret'
+        end
+        @tool_proxy
+      end
+      @tool_proxy
     end
 
     def tool_profile
@@ -49,7 +57,15 @@ module RailsLti2Provider
     end
 
     def security_contract
-      @security_contract ||= IMS::LTI::Models::SecurityContract.new(shared_secret: shared_secret)
+      unless @security_contract
+        if @tool_consumer_profile.capabilities_offered.include?('OAuth.splitSecret')
+          @security_contract = IMS::LTI::Models::SecurityContract.new(tp_half_shared_secret: shared_secret)
+        else
+          @security_contract = IMS::LTI::Models::SecurityContract.new(shared_secret: shared_secret)
+        end
+      else
+        @security_contract
+      end
     end
 
     def self.register(registration, controller)
@@ -62,7 +78,12 @@ module RailsLti2Provider
       if registered_proxy
         tool_proxy.tool_proxy_guid = registered_proxy.tool_proxy_guid
         tool_proxy.id = controller.send(engine_name).show_tool_url(registered_proxy.tool_proxy_guid)
-        tp = Tool.create!(shared_secret: tool_proxy.security_contract.shared_secret, uuid: registered_proxy.tool_proxy_guid, tool_settings: tool_proxy.as_json, lti_version: tool_proxy.lti_version)
+        if tc_secret = registered_proxy.tc_half_shared_secret
+          shared_secret = tc_secret + tool_proxy.security_contract.tp_half_shared_secret
+        else
+          shared_secret = tool_proxy.security_contract.shared_secret
+        end
+        tp = Tool.create!(shared_secret: shared_secret, uuid: registered_proxy.tool_proxy_guid, tool_settings: tool_proxy.as_json, lti_version: tool_proxy.lti_version)
         registration.update(workflow_state: 'registered', tool: tp)
         {
           tool_proxy_uuid: tool_proxy.tool_proxy_guid,
