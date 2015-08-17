@@ -14,7 +14,7 @@ module RailsLti2Provider
     end
 
     def shared_secret
-      @shared_secret ||= SecureRandom.hex(64)
+      @shared_secret ||= SecureRandom.hex(128)
     end
 
     def tool_proxy
