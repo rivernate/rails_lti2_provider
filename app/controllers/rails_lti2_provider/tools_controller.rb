@@ -11,7 +11,16 @@ module RailsLti2Provider
     #alternative action for custom registration workflow
     def submit_proxy
       registration = RailsLti2Provider::Registration.find(params[:registration_uuid])
-      redirect_to_consumer(register_proxy(registration))
+      begin
+        response = register_proxy(registration)
+      rescue IMS::LTI::ToolProxyRegistrationError
+        response = {
+            return_url: registration.registration_request.launch_presentation_return_url,
+            status: 'error',
+            message: "Failed to create a tool proxy",
+        }
+      end
+      redirect_to_consumer(response)
     end
 
     def show

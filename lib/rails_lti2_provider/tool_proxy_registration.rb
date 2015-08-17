@@ -14,17 +14,17 @@ module RailsLti2Provider
     end
 
     def shared_secret
-      @shared_secret ||= SecureRandom.hex(128)
+      @shared_secret ||= SecureRandom.hex(64)
     end
 
     def tool_proxy
       unless @tool_proxy
         @tool_proxy ||= IMS::LTI::Models::ToolProxy.new(
-          id: 'defined_by_tool_consumer',
-          lti_version: 'LTI-2p0',
-          security_contract: security_contract,
-          tool_consumer_profile: tool_consumer_profile.id,
-          tool_profile: tool_profile,
+            id: 'defined_by_tool_consumer',
+            lti_version: 'LTI-2p0',
+            security_contract: security_contract,
+            tool_consumer_profile: tool_consumer_profile.id,
+            tool_profile: tool_profile,
         )
         if @tool_consumer_profile.capabilities_offered.include?('OAuth.splitSecret')
           @tool_proxy.enabled_capability ||= []
@@ -37,10 +37,10 @@ module RailsLti2Provider
 
     def tool_profile
       @tool_profile ||= IMS::LTI::Models::ToolProfile.new(
-        lti_version: 'LTI-2p0',
-        product_instance: product_instance,
-        resource_handler: resource_handlers,
-        base_url_choice: base_url_choice
+          lti_version: 'LTI-2p0',
+          product_instance: product_instance,
+          resource_handler: resource_handlers,
+          base_url_choice: base_url_choice
       )
     end
 
@@ -74,8 +74,8 @@ module RailsLti2Provider
       registration_service = IMS::LTI::Services::ToolProxyRegistrationService.new(registration_request)
       tool_proxy = registration.tool_proxy
       return_url = registration.registration_request.launch_presentation_return_url
-      registered_proxy = registration_service.register_tool_proxy(tool_proxy)
-      if registered_proxy
+      begin
+        registered_proxy = registration_service.register_tool_proxy(tool_proxy)
         tool_proxy.tool_proxy_guid = registered_proxy.tool_proxy_guid
         tool_proxy.id = controller.send(engine_name).show_tool_url(registered_proxy.tool_proxy_guid)
         if tc_secret = registered_proxy.tc_half_shared_secret
@@ -86,16 +86,9 @@ module RailsLti2Provider
         tp = Tool.create!(shared_secret: shared_secret, uuid: registered_proxy.tool_proxy_guid, tool_settings: tool_proxy.as_json, lti_version: tool_proxy.lti_version)
         registration.update(workflow_state: 'registered', tool: tp)
         {
-          tool_proxy_uuid: tool_proxy.tool_proxy_guid,
-          return_url: return_url,
-          status: 'success'
-        }
-      else
-        {
-          tool_proxy_uuid: tool_proxy.tool_proxy_guid,
-          return_url: return_url,
-          status: 'error',
-          message: "Failed to create a tool proxy"
+            tool_proxy_uuid: tool_proxy.tool_proxy_guid,
+            return_url: return_url,
+            status: 'success'
         }
       end
     end
@@ -103,11 +96,11 @@ module RailsLti2Provider
     def resource_handlers
       @resource_handlers ||= RailsLti2Provider::RESOURCE_HANDLERS.map do |handler|
         IMS::LTI::Models::ResourceHandler.from_json(
-          {
-            resource_type: {code: handler['code']},
-            resource_name: handler['name'],
-            message: messages(handler['messages'])
-          }
+            {
+                resource_type: {code: handler['code']},
+                resource_name: handler['name'],
+                message: messages(handler['messages'])
+            }
         )
       end
     end
@@ -117,10 +110,10 @@ module RailsLti2Provider
     def messages(messages)
       messages.map do |m|
         {
-          message_type: m['type'],
-          path: Rails.application.routes.url_for(only_path: true, host: @controller.request.host_with_port, controller: m['route']['controller'], action: m['route']['action']),
-          parameter: parameters(m['parameters']),
-          enabled_capability: capabilities(m)
+            message_type: m['type'],
+            path: Rails.application.routes.url_for(only_path: true, host: @controller.request.host_with_port, controller: m['route']['controller'], action: m['route']['action']),
+            parameter: parameters(m['parameters']),
+            enabled_capability: capabilities(m)
         }
       end
     end
