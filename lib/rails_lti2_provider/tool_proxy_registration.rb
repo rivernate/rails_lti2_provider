@@ -93,6 +93,26 @@ module RailsLti2Provider
       end
     end
 
+    def self.reregister(registration, controller)
+      registration_request = registration.registration_request
+      raise 'ToolProxyAlreadyRegisteredException' if [:registered, :rereg_pending].include?(registration.workflow_state)
+      registration_service = IMS::LTI::Services::ToolProxyRegistrationService.new(registration_request)
+      tool_proxy = registration.tool_proxy
+      tool_proxy.tool_proxy_guid = registration.tool.uuid
+      return_url = registration.registration_request.launch_presentation_return_url
+      tool = registration.tool
+      begin
+        confirmation_url = controller.send(engine_name).rereg_confirmation_url(tool.uuid, correlation_id: registration.correlation_id)
+        registered_proxy = registration_service.register_tool_proxy(tool_proxy, confirmation_url, tool.shared_secret)
+        registration.update(workflow_state: 'rereg_pending', tool_proxy_json: registered_proxy.as_json)
+        {
+            tool_proxy_uuid: tool_proxy.tool_proxy_guid,
+            return_url: return_url,
+            status: 'success'
+        }
+      end
+    end
+
     def resource_handlers
       @resource_handlers ||= RailsLti2Provider::RESOURCE_HANDLERS.map do |handler|
         IMS::LTI::Models::ResourceHandler.from_json(

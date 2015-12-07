@@ -1,6 +1,6 @@
 module RailsLti2Provider
   class Registration < ActiveRecord::Base
-
+    validates :correlation_id, uniqueness: true, allow_nil: true
     serialize :tool_proxy_json, JSON
     serialize :registration_request_params, JSON
     belongs_to :tool
@@ -11,7 +11,7 @@ module RailsLti2Provider
 
 
     def registration_request
-      @registration_request ||= IMS::LTI::Models::Messages::RegistrationRequest.new(registration_request_params)
+      @registration_request ||= IMS::LTI::Models::Messages::Message.generate(registration_request_params)
     end
 
     def tool_proxy

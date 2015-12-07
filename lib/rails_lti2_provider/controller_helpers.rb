@@ -13,15 +13,25 @@ module RailsLti2Provider
     end
 
     def registration_request
-      registration_request = IMS::LTI::Models::Messages::RegistrationRequest.new(params)
-      @registration = RailsLti2Provider::Registration.create!(
-        registration_request_params: registration_request.post_params,
-        tool_proxy_json: RailsLti2Provider::ToolProxyRegistration.new(registration_request, self).tool_proxy.as_json
+      registration_request = IMS::LTI::Models::Messages::Message.generate(params)
+      @registration = RailsLti2Provider::Registration.new(
+          registration_request_params: registration_request.post_params,
+          tool_proxy_json: RailsLti2Provider::ToolProxyRegistration.new(registration_request, self).tool_proxy.as_json
       )
+      if registration_request.is_a? IMS::LTI::Models::Messages::ToolProxyReregistrationRequest
+        @registration.tool = Tool.where(uuid: params['oauth_consumer_key']).first
+        @registration.correlation_id = SecureRandom.hex(64)
+      end
+      @registration.save!
+
     end
 
     def register_proxy(registration)
-      RailsLti2Provider::ToolProxyRegistration.register(registration, self)
+      if registration.registration_request.is_a? IMS::LTI::Models::Messages::ToolProxyReregistrationRequest
+        RailsLti2Provider::ToolProxyRegistration.reregister(registration, self)
+      else
+        RailsLti2Provider::ToolProxyRegistration.register(registration, self)
+      end
     end
 
     def redirect_to_consumer(registration_result)
