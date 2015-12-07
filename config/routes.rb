@@ -15,5 +15,8 @@ RailsLti2Provider::Engine.routes.draw do
 
   get 'tool_proxy/:tool_proxy_id', to: 'tools#show', as: :show_tool
 
+  put 'tool_proxy/:tool_proxy_guid', to: 'tool#apply_rereg', as: :rereg_confirmation
+  delete 'tool_proxy/:tool_proxy_guid', to: 'tool#delete_rereg'
+
 
 end
