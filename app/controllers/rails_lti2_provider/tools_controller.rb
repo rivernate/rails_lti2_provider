@@ -3,6 +3,7 @@ module RailsLti2Provider
     include RailsLti2Provider::ControllerHelpers
 
     before_filter :registration_request, only: :register
+    skip_before_filter :verify_authenticity_token
 
     def register
       redirect_to_consumer(register_proxy(@registration))
@@ -31,12 +32,11 @@ module RailsLti2Provider
       tool = Tool.where(uuid: params[:tool_proxy_guid]).first
       registration = tool.registrations.where(correlation_id: params[:correlation_id]).first
       render status: :not_found and return unless registration
-      tool_proxy = tool.tool_proxy
       registered_proxy = registration.tool_proxy
       if tc_secret = registered_proxy.tc_half_shared_secret
-        shared_secret = tc_secret + tool_proxy.security_contract.tp_half_shared_secret
+        shared_secret = tc_secret + registered_proxy.security_contract.tp_half_shared_secret
       else
-        shared_secret = tool_proxy.security_contract.shared_secret
+        shared_secret = registered_proxy.security_contract.shared_secret
       end
       tool.transaction do
         tool.shared_secret= shared_secret
@@ -52,7 +52,7 @@ module RailsLti2Provider
       tool = Tool.where(uuid: params[:tool_proxy_guid]).first
       registration = tool.registrations.where(correlation_id: params[:correlation_id]).first
       render status: :not_found and return unless registration
-      registration.delete!
+      registration.destroy
     end
 
   end
