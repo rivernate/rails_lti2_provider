@@ -12,4 +12,3 @@ gemspec
 
 # To use debugger
 # gem 'debugger'
-gem 'ims-lti', :git => 'https://github.com/rivernate/ims-lti.git', :branch => 'rereg'
