@@ -18,7 +18,7 @@ module RailsLti2Provider
           registration_request_params: registration_request.post_params,
           tool_proxy_json: RailsLti2Provider::ToolProxyRegistration.new(registration_request, self).tool_proxy.as_json
       )
-      if registration_request.is_a? IMS::LTI::Models::Messages::ToolProxyReregistrationRequest
+      if registration_request.is_a? IMS::LTI::Models::Messages::ToolProxyUpdateRequest
         @registration.tool = Tool.where(uuid: params['oauth_consumer_key']).first
         @registration.correlation_id = SecureRandom.hex(64)
       end
@@ -27,7 +27,7 @@ module RailsLti2Provider
     end
 
     def register_proxy(registration)
-      if registration.registration_request.is_a? IMS::LTI::Models::Messages::ToolProxyReregistrationRequest
+      if registration.registration_request.is_a? IMS::LTI::Models::Messages::ToolProxyUpdateRequest
         RailsLti2Provider::ToolProxyRegistration.reregister(registration, self)
       else
         RailsLti2Provider::ToolProxyRegistration.register(registration, self)
